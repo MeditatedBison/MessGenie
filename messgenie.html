@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MessGenie v2: Glance-and-Go</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .app-container {
+            max-width: 420px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .view {
+            display: none;
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        .view.active {
+            display: flex;
+        }
+        @keyframes pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.7); }
+            50% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); }
+        }
+        .animated-pass {
+            animation: pulse 2s infinite;
+        }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: #f1f1f1; }
+        ::-webkit-scrollbar-thumb { background: #888; border-radius: 5px; }
+        ::-webkit-scrollbar-thumb:hover { background: #555; }
+    </style>
+</head>
+<body class="bg-gray-100">
+
+    <div id="app" class="app-container bg-white shadow-lg">
+
+        <!-- ====================================================== -->
+        <!-- LOGIN VIEW -->
+        <!-- ====================================================== -->
+        <div id="login-view" class="view p-8 justify-center items-center">
+            <div class="w-full text-center">
+                <h1 class="text-4xl font-bold text-gray-800">MessGenie</h1>
+                <p class="text-gray-500 mb-8">Your ISI Bangalore Mess Companion</p>
+                <div class="space-y-4">
+                    <input id="email-input" type="email" placeholder="Enter your @isibang.ac.in email" class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button id="login-btn" class="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-300 shadow-md">Login / Sign Up</button>
+                </div>
+                <div class="mt-4 text-xs text-gray-400">
+                    <p>Use any valid student email from the list.</p>
+                    <p>Use `admin@isibang.ac.in` to test admin view.</p>
+                </div>
+                 <div id="loading-spinner" class="mt-4 hidden">
+                    <svg class="animate-spin h-8 w-8 text-blue-600 mx-auto" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <p class="text-gray-500">Initializing...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ====================================================== -->
+        <!-- STUDENT DASHBOARD VIEW -->
+        <!-- ====================================================== -->
+        <div id="student-dashboard-view" class="view">
+            <header class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                <div>
+                    <h1 class="text-xl font-bold text-gray-800">Welcome, <span id="student-name-header"></span>!</h1>
+                    <p class="text-sm text-gray-500">Your Mess Dashboard</p>
+                </div>
+                <button id="logout-btn-student" class="text-sm text-red-500 font-semibold">Logout</button>
+            </header>
+            <main class="flex-grow p-6 space-y-6 overflow-y-auto">
+                <!-- Profile Card -->
+                <div class="bg-blue-600 text-white p-5 rounded-xl shadow-lg flex items-center space-x-4">
+                    <img id="student-photo" src="https://placehold.co/80x80/e2e8f0/334155?text=:)&font=inter" class="w-20 h-20 rounded-full border-4 border-white object-cover">
+                    <div>
+                        <h2 id="student-name-card" class="text-2xl font-bold"></h2>
+                        <p id="student-plan" class="text-blue-200 font-medium"></p>
+                        <p id="student-plan-expiry" class="text-xs text-blue-300"></p>
+                    </div>
+                </div>
+
+                <!-- Coupon Balance -->
+                 <div class="bg-gray-50 p-4 rounded-lg">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-2">Coupon Balance</h3>
+                    <div class="flex justify-around text-center">
+                        <div>
+                            <p class="text-2xl font-bold text-yellow-600" id="coupon-b">0</p>
+                            <p class="text-xs text-gray-500">Breakfast</p>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-green-600" id="coupon-l">0</p>
+                            <p class="text-xs text-gray-500">Lunch</p>
+                        </div>
+                        <div>
+                            <p class="text-2xl font-bold text-blue-700" id="coupon-d">0</p>
+                            <p class="text-xs text-gray-500">Dinner</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Meal Buttons -->
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">Use Meal Pass</h3>
+                    <div class="grid grid-cols-1 gap-4">
+                        <button data-meal="Breakfast" class="meal-btn bg-yellow-400 text-yellow-900 font-bold py-6 rounded-lg shadow-md hover:bg-yellow-500 transition disabled:opacity-50 disabled:cursor-not-allowed">Breakfast</button>
+                        <button data-meal="Lunch" class="meal-btn bg-green-500 text-white font-bold py-6 rounded-lg shadow-md hover:bg-green-600 transition disabled:opacity-50 disabled:cursor-not-allowed">Lunch</button>
+                        <button data-meal="Dinner" class="meal-btn bg-blue-800 text-white font-bold py-6 rounded-lg shadow-md hover:bg-blue-900 transition disabled:opacity-50 disabled:cursor-not-allowed">Dinner</button>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- ====================================================== -->
+        <!-- VISUAL PASS VIEW -->
+        <!-- ====================================================== -->
+        <div id="visual-pass-view" class="view justify-center items-center text-white text-center p-4">
+            <div id="pass-container" class="w-full h-full flex flex-col justify-around items-center rounded-2xl animated-pass">
+                <div class="text-center">
+                    <p class="text-2xl font-semibold">Show this to the cook</p>
+                    <h2 id="pass-meal-type" class="text-8xl font-black uppercase tracking-wider">LUNCH</h2>
+                </div>
+                <img id="pass-photo" src="https://placehold.co/150x150/e2e8f0/334155?text=:)&font=inter" class="w-40 h-40 rounded-full border-8 border-white object-cover shadow-2xl">
+                <div>
+                    <h3 id="pass-student-name" class="text-4xl font-bold"></h3>
+                    <p id="pass-date" class="text-xl font-medium mt-2"></p>
+                </div>
+                 <button id="close-pass-btn" class="absolute bottom-5 bg-white/20 px-4 py-2 rounded-lg text-sm font-semibold backdrop-blur-sm">Close Pass</button>
+            </div>
+        </div>
+
+        <!-- ====================================================== -->
+        <!-- ADMIN DASHBOARD VIEW -->
+        <!-- ====================================================== -->
+        <div id="admin-dashboard-view" class="view">
+             <header class="p-4 bg-gray-800 text-white border-b border-gray-700 flex justify-between items-center">
+                <div><h1 class="text-xl font-bold">Admin Panel</h1></div>
+                <button id="logout-btn-admin" class="text-sm text-red-400 font-semibold">Logout</button>
+            </header>
+             <main class="flex-grow p-6 space-y-6 bg-gray-200 overflow-y-auto">
+                <div class="bg-white p-4 rounded-lg shadow">
+                    <h3 class="text-lg font-semibold text-gray-700 mb-3">Student Management</h3>
+                    <input id="student-search-input" type="text" placeholder="Search by name or email..." class="w-full px-3 py-2 border rounded-md mb-4 text-sm">
+                    <div id="student-list-container" class="max-h-96 overflow-y-auto pr-2">
+                        <!-- Student items will be injected here -->
+                    </div>
+                </div>
+             </main>
+        </div>
+        
+        <!-- MODALS -->
+        <div id="modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-sm text-center">
+                <p id="modal-message" class="text-gray-700 mb-4"></p>
+                <button id="modal-close-btn" class="bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">OK</button>
+            </div>
+        </div>
+        
+        <div id="admin-manage-plan-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 z-50">
+            <div class="bg-white rounded-lg shadow-xl p-6 w-full max-w-md text-left space-y-4">
+                <h3 class="text-xl font-bold text-gray-800">Manage Plan for <span id="manage-student-name"></span></h3>
+                
+                <div>
+                    <label class="font-semibold text-gray-600 text-sm">Plan Type</label>
+                    <select id="plan-type-select" class="w-full mt-1 p-2 border rounded-md">
+                        <option value="Subscription">Subscription (Monthly/Half)</option>
+                        <option value="Coupons">Add Coupons</option>
+                    </select>
+                </div>
+
+                <div id="subscription-fields">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="font-semibold text-gray-600 text-sm">Duration</label>
+                             <select id="plan-duration-select" class="w-full mt-1 p-2 border rounded-md">
+                                <option value="Full Month">Full Month</option>
+                                <option value="Half Month - First">Half Month (9th-23rd)</option>
+                                <option value="Half Month - Second">Half Month (24th-8th)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-600 text-sm">Meals</label>
+                             <select id="plan-meals-select" class="w-full mt-1 p-2 border rounded-md">
+                                <option value="BLD">BLD</option>
+                                <option value="BD">BD</option>
+                                <option value="LD">LD</option>
+                                <option value="B">B only</option>
+                                <option value="D">D only</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="coupon-fields" class="hidden">
+                     <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="font-semibold text-gray-600 text-sm">Meal Type</label>
+                             <select id="coupon-meal-type-select" class="w-full mt-1 p-2 border rounded-md">
+                                <option value="Breakfast">Breakfast</option>
+                                <option value="Lunch">Lunch</option>
+                                <option value="Dinner">Dinner</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="font-semibold text-gray-600 text-sm">Quantity</label>
+                            <input id="coupon-quantity-input" type="number" value="10" class="w-full mt-1 p-2 border rounded-md">
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button id="manage-plan-cancel-btn" class="bg-gray-200 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancel</button>
+                    <button id="manage-plan-save-btn" class="bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Save Plan</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection, query } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : { apiKey: "DEMO", authDomain: "DEMO", projectId: "DEMO" };
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'messgenie-v2-demo';
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let userId = null;
+        let userUnsubscribe = null;
+        let adminUnsubscribe = null;
+        let studentToManage = null;
+
+        const views = {
+            login: document.getElementById('login-view'),
+            studentDashboard: document.getElementById('student-dashboard-view'),
+            visualPass: document.getElementById('visual-pass-view'),
+            adminDashboard: document.getElementById('admin-dashboard-view'),
+        };
+        const loadingSpinner = document.getElementById('loading-spinner');
+        const modal = document.getElementById('modal');
+        const modalMessage = document.getElementById('modal-message');
+        const adminManagePlanModal = document.getElementById('admin-manage-plan-modal');
+
+        const MEAL_CONFIG = {
+            BLD: { Breakfast: true, Lunch: true, Dinner: true },
+            BD:  { Breakfast: true, Lunch: false, Dinner: true },
+            LD:  { Breakfast: false, Lunch: true, Dinner: true },
+            B:   { Breakfast: true, Lunch: false, Dinner: false },
+            D:   { Breakfast: false, Lunch: false, Dinner: true },
+        };
+
+        const createDefaultPlan = () => ({
+            activePlan: {
+                type: 'Coupons',
+                planName: 'No Subscription',
+                validUntil: null,
+                mealsAllowed: { Breakfast: false, Lunch: false, Dinner: false }
+            },
+            couponBalance: { Breakfast: 0, Lunch: 0, Dinner: 0 }, // Start with 0 coupons
+            lastUsed: { Breakfast: null, Lunch: null, Dinner: null }
+        });
+
+        // ======================================================
+        // DATABASE: Pre-loaded list of all students
+        // ======================================================
+        const MOCK_STUDENTS = {
+            'admin@isibang.ac.in': { name: "Admin User", email: "admin@isibang.ac.in", role: "admin" },
+            'bsdbg2401@isibang.ac.in': { name: 'Abhinavan O S', email: 'bsdbg2401@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2402@isibang.ac.in': { name: 'Anant Agarwal', email: 'bsdbg2402@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2404@isibang.ac.in': { name: 'Dipendu Halder', email: 'bsdbg2404@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2405@isibang.ac.in': { name: 'Faaz Noushad', email: 'bsdbg2405@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2406@isibang.ac.in': { name: 'Hardik Goyal', email: 'bsdbg2406@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2407@isibang.ac.in': { name: 'Kanneboyina Likhitha', email: 'bsdbg2407@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2408@isibang.ac.in': { name: 'Madabathula Jahnavi', email: 'bsdbg2408@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2409@isibang.ac.in': { name: 'Mukesh Murugalingam', email: 'bsdbg2409@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2410@isibang.ac.in': { name: 'P Varun', email: 'bsdbg2410@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2411@isibang.ac.in': { name: 'Peravena Yashwanth', email: 'bsdbg2411@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2412@isibang.ac.in': { name: 'Prateek N Jaiswal', email: 'bsdbg2412@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2413@isibang.ac.in': { name: 'Pushkara C R', email: 'bsdbg2413@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2414@isibang.ac.in': { name: 'Raghav Singh', email: 'bsdbg2414@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2415@isibang.ac.in': { name: 'Rathod Akash', email: 'bsdbg2415@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2416@isibang.ac.in': { name: 'Riddhiman Das', email: 'bsdbg2416@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2417@isibang.ac.in': { name: 'Sharath Kumar Yerramada', email: 'bsdbg2417@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2418@isibang.ac.in': { name: 'Shivam Ambwani', email: 'bsdbg2418@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2420@isibang.ac.in': { name: 'Tanish Ghosh', email: 'bsdbg2420@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2421@isibang.ac.in': { name: 'Tanishq Hindoliya', email: 'bsdbg2421@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bsdbg2423@isibang.ac.in': { name: 'Vinaayak Dhiman', email: 'bsdbg2423@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2501@isibang.ac.in': { name: 'Aayush Sahu', email: 'bmat2501@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2502@isibang.ac.in': { name: 'Abhay Keerti Gautam', email: 'bmat2502@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2503@isibang.ac.in': { name: 'Abhay Singh', email: 'bmat2503@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2504@isibang.ac.in': { name: 'Abhishek Parewa', email: 'bmat2504@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2505@isibang.ac.in': { name: 'Adil Islam', email: 'bmat2505@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2506@isibang.ac.in': { name: 'Aditi Biswas', email: 'bmat2506@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2507@isibang.ac.in': { name: 'Akshat', email: 'bmat2507@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2508@isibang.ac.in': { name: 'Anurag Bhunia', email: 'bmat2508@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2509@isibang.ac.in': { name: 'Aritra Chakrabarty', email: 'bmat2509@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2510@isibang.ac.in': { name: 'Arkadeep Das', email: 'bmat2510@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2511@isibang.ac.in': { name: 'Arkaraj Mukherjee', email: 'bmat2511@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2512@isibang.ac.in': { name: 'Ayaan C Afsal', email: 'bmat2512@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2513@isibang.ac.in': { name: 'Ayush Mandal', email: 'bmat2513@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2514@isibang.ac.in': { name: 'Charana Viviksha R', email: 'bmat2514@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2515@isibang.ac.in': { name: 'Chethan Gowda N S', email: 'bmat2515@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2516@isibang.ac.in': { name: 'Deepak C S', email: 'bmat2516@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2517@isibang.ac.in': { name: 'Dhruv Rangain', email: 'bmat2517@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2518@isibang.ac.in': { name: 'Eeranki Vasistha', email: 'bmat2518@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2519@isibang.ac.in': { name: 'Guravana Lakshmi Narayana Naidu', email: 'bmat2519@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2520@isibang.ac.in': { name: 'Gurijala Maruthi Sreenivas', email: 'bmat2520@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2521@isibang.ac.in': { name: 'Hashim Mirza', email: 'bmat2521@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2522@isibang.ac.in': { name: 'Kartikeya Sharma', email: 'bmat2522@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2523@isibang.ac.in': { name: 'Kinshuk Banik', email: 'bmat2523@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2524@isibang.ac.in': { name: 'Kovur Suphal', email: 'bmat2524@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2525@isibang.ac.in': { name: 'Lokesh Korada', email: 'bmat2525@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2526@isibang.ac.in': { name: 'M N Prashanth Kumar', email: 'bmat2526@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2527@isibang.ac.in': { name: 'Manorom Banerjee', email: 'bmat2527@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2528@isibang.ac.in': { name: 'Nayeem Kaifi', email: 'bmat2528@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2529@isibang.ac.in': { name: 'Nikhil Raj', email: 'bmat2529@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2530@isibang.ac.in': { name: 'Nishant Malay Mishra', email: 'bmat2530@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2531@isibang.ac.in': { name: 'Ojas M Somannavar', email: 'bmat2531@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2532@isibang.ac.in': { name: 'Protyus KR Sharma', email: 'bmat2532@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2533@isibang.ac.in': { name: 'Raj Gehlot', email: 'bmat2533@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2534@isibang.ac.in': { name: 'Rajesh Kumar Pandit', email: 'bmat2534@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2535@isibang.ac.in': { name: 'Rishabh Sagar', email: 'bmat2535@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2536@isibang.ac.in': { name: 'Rwittankar Naskar', email: 'bmat2536@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2537@isibang.ac.in': { name: 'Sanket Nagesh Surve', email: 'bmat2537@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2538@isibang.ac.in': { name: 'Saptarshi Khara', email: 'bmat2538@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2539@isibang.ac.in': { name: 'Shivansh Nigam', email: 'bmat2539@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2540@isibang.ac.in': { name: 'Shouri A K Bhat', email: 'bmat2540@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2541@isibang.ac.in': { name: 'Smaksh Mittal', email: 'bmat2541@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2542@isibang.ac.in': { name: 'Sonu Kumar', email: 'bmat2542@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2543@isibang.ac.in': { name: 'Srijani', email: 'bmat2543@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2544@isibang.ac.in': { name: 'Subhajyoti Panda', email: 'bmat2544@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2545@isibang.ac.in': { name: 'Sunhrit Paria', email: 'bmat2545@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2546@isibang.ac.in': { name: 'Teraiya Aditya Satishbhai', email: 'bmat2546@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2547@isibang.ac.in': { name: 'Thangella Jeevantej', email: 'bmat2547@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2548@isibang.ac.in': { name: 'Ujjwal Swarn', email: 'bmat2548@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2549@isibang.ac.in': { name: 'Ujwal Challa', email: 'bmat2549@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2550@isibang.ac.in': { name: 'Vaibhav Singh', email: 'bmat2550@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2551@isibang.ac.in': { name: 'Vardhan Yogesh Katekar', email: 'bmat2551@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2552@isibang.ac.in': { name: 'Vempada Ganesh Karthikeya', email: 'bmat2552@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2553@isibang.ac.in': { name: 'Waiz Arman', email: 'bmat2553@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2554@isibang.ac.in': { name: 'Yalam Venkata Phanindra Kumar', email: 'bmat2554@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2412@isibang.ac.in': { name: 'Gagan C', email: 'bmat2412@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2418@isibang.ac.in': { name: 'Mohaideen Abdul Khadir M', email: 'bmat2418@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2427@isibang.ac.in': { name: 'Samitinjaya Pattanayak', email: 'bmat2427@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2401@isibang.ac.in': { name: 'Aayush Mohan', email: 'bmat2401@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2402@isibang.ac.in': { name: 'Aayusman Mallick', email: 'bmat2402@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2403@isibang.ac.in': { name: 'Alluvada Revanth Sairam', email: 'bmat2403@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2404@isibang.ac.in': { name: 'Anjan Majhi', email: 'bmat2404@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2405@isibang.ac.in': { name: 'Anshul Raj Singh', email: 'bmat2405@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2406@isibang.ac.in': { name: 'Anshuman Sharma', email: 'bmat2406@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2407@isibang.ac.in': { name: 'Anuvab De', email: 'bmat2407@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2408@isibang.ac.in': { name: 'Arkaprovo Das', email: 'bmat2408@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2409@isibang.ac.in': { name: 'Arnav Kanaujia', email: 'bmat2409@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2410@isibang.ac.in': { name: 'Arnav Tiwary', email: 'bmat2410@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2411@isibang.ac.in': { name: 'Aryan Avinash Komarla', email: 'bmat2411@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2413@isibang.ac.in': { name: 'Gauransh Kapur', email: 'bmat2413@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2414@isibang.ac.in': { name: 'Gedela Sai Shashank', email: 'bmat2414@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2415@isibang.ac.in': { name: 'Gudavalli Sathya Tej', email: 'bmat2415@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2416@isibang.ac.in': { name: 'Kanak Nilesh Sanghvi', email: 'bmat2416@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2417@isibang.ac.in': { name: 'Kush Agrawal', email: 'bmat2417@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2419@isibang.ac.in': { name: 'Payal Rajora', email: 'bmat2419@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2420@isibang.ac.in': { name: 'Piyush Bawal', email: 'bmat2420@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2421@isibang.ac.in': { name: 'Priyankar Biswas', email: 'bmat2421@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2422@isibang.ac.in': { name: 'Rahul Kumar', email: 'bmat2422@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2423@isibang.ac.in': { name: 'Ramdas Singh', email: 'bmat2423@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2425@isibang.ac.in': { name: 'Rishit Kulhari', email: 'bmat2425@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2426@isibang.ac.in': { name: 'Rishu Anand', email: 'bmat2426@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2428@isibang.ac.in': { name: 'Sathvik H S', email: 'bmat2428@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2429@isibang.ac.in': { name: 'Sayan Bhadra', email: 'bmat2429@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2430@isibang.ac.in': { name: 'Sayan Dewan', email: 'bmat2430@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2431@isibang.ac.in': { name: 'Shyamal Borgohain', email: 'bmat2431@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2432@isibang.ac.in': { name: 'Siddharto Das', email: 'bmat2432@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2433@isibang.ac.in': { name: 'Souparna Pal', email: 'bmat2433@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2434@isibang.ac.in': { name: 'Subhojit Maji', email: 'bmat2434@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2435@isibang.ac.in': { name: 'Swarnav Kalita', email: 'bmat2435@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2437@isibang.ac.in': { name: 'V J Ranjit Kumar', email: 'bmat2437@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2438@isibang.ac.in': { name: 'V Sai Prabhav', email: 'bmat2438@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2439@isibang.ac.in': { name: 'Yash Saraiwala', email: 'bmat2439@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2302@isibang.ac.in': { name: 'Abhishek Pradhan', email: 'bmat2302@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2310@isibang.ac.in': { name: 'Anurag Ramachandran', email: 'bmat2310@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2319@isibang.ac.in': { name: 'Devesh Kumar', email: 'bmat2319@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2320@isibang.ac.in': { name: 'Dibyajyoti Prusty', email: 'bmat2320@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2301@isibang.ac.in': { name: 'Aanchal Saraf', email: 'bmat2301@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2303@isibang.ac.in': { name: 'Adrija Chatterjee', email: 'bmat2303@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2304@isibang.ac.in': { name: 'Advait Sunder', email: 'bmat2304@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2305@isibang.ac.in': { name: 'Agaman Banerjee', email: 'bmat2305@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2306@isibang.ac.in': { name: 'Akshat Mishra', email: 'bmat2306@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2307@isibang.ac.in': { name: 'Anant Umesh Kerur', email: 'bmat2307@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2308@isibang.ac.in': { name: 'Andy Marion Guerra', email: 'bmat2308@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2309@isibang.ac.in': { name: 'Anis Kumar Sarkar', email: 'bmat2309@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2311@isibang.ac.in': { name: 'Aritrabha Majumdar', email: 'bmat2311@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2312@isibang.ac.in': { name: 'Arjina Jana', email: 'bmat2312@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2313@isibang.ac.in': { name: 'Arkapriyo Hore', email: 'bmat2313@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2314@isibang.ac.in': { name: 'Ayan Pal', email: 'bmat2314@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2315@isibang.ac.in': { name: 'Bodhideep Joardar', email: 'bmat2315@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2316@isibang.ac.in': { name: 'Daibik Barik', email: 'bmat2316@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2317@isibang.ac.in': { name: 'Darsh Jain', email: 'bmat2317@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2318@isibang.ac.in': { name: 'Debatra Das', email: 'bmat2318@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2321@isibang.ac.in': { name: 'Kalmanje Avyaktha Achar', email: 'bmat2321@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2322@isibang.ac.in': { name: 'Kangna Chirag Patel', email: 'bmat2322@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2323@isibang.ac.in': { name: 'Kaustubh Dineshkumar Dubey', email: 'bmat2323@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2324@isibang.ac.in': { name: 'Korou Khundrakpam', email: 'bmat2324@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2325@isibang.ac.in': { name: 'Kunal Rajpoot', email: 'bmat2325@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2327@isibang.ac.in': { name: 'Madhubala Senthilnathan', email: 'bmat2327@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2329@isibang.ac.in': { name: 'Mayukh Vellala', email: 'bmat2329@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2330@isibang.ac.in': { name: 'Muhammed Shameel K V', email: 'bmat2330@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2331@isibang.ac.in': { name: 'Naveen Kumar G', email: 'bmat2331@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2332@isibang.ac.in': { name: 'Nirjhar Laskar', email: 'bmat2332@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2333@isibang.ac.in': { name: 'Pranav', email: 'bmat2333@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2334@isibang.ac.in': { name: 'Pushpender Chauhan', email: 'bmat2334@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2335@isibang.ac.in': { name: 'Rajvardhan Singh Sisodiya', email: 'bmat2335@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2336@isibang.ac.in': { name: 'Samadrita Bhattacharya', email: 'bmat2336@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2337@isibang.ac.in': { name: 'Sarbartha Sarkar', email: 'bmat2337@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2338@isibang.ac.in': { name: 'Sarvesh Soni', email: 'bmat2338@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2339@isibang.ac.in': { name: 'Shankha Suvra Dam', email: 'bmat2339@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2340@isibang.ac.in': { name: 'Shiva Semwal', email: 'bmat2340@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2341@isibang.ac.in': { name: 'Shrajal Kushwaha', email: 'bmat2341@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2342@isibang.ac.in': { name: 'Shrayan Pramanik', email: 'bmat2342@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2344@isibang.ac.in': { name: 'Suryansh Shailesh Shirbhate', email: 'bmat2344@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2345@isibang.ac.in': { name: 'Sushant Aditya', email: 'bmat2345@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2346@isibang.ac.in': { name: 'Vijit Tripathi', email: 'bmat2346@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2347@isibang.ac.in': { name: 'Vishal Vikram Parth', email: 'bmat2347@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2348@isibang.ac.in': { name: 'Yuvraj Singh Rajpurohit', email: 'bmat2348@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2349@isibang.ac.in': { name: 'Arya Biswas', email: 'bmat2349@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2350@isibang.ac.in': { name: 'Devansh Dhar Dwivedi', email: 'bmat2350@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2351@isibang.ac.in': { name: 'Harsh Sharma', email: 'bmat2351@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2352@isibang.ac.in': { name: 'Keshav Narayanan R', email: 'bmat2352@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2353@isibang.ac.in': { name: 'Lavanis A', email: 'bmat2353@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2354@isibang.ac.in': { name: 'Shreyash Vaish', email: 'bmat2354@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2355@isibang.ac.in': { name: 'Tanay Jain', email: 'bmat2355@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2356@isibang.ac.in': { name: 'Treanungkur Mal', email: 'bmat2356@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2216@isibang.ac.in': { name: 'Challa Saketh Sarma', email: 'bmat2216@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2218@isibang.ac.in': { name: 'Disha Kumari', email: 'bmat2218@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2219@isibang.ac.in': { name: 'Divyanshu Gupta', email: 'bmat2219@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2237@isibang.ac.in': { name: 'Sasapu Lokeswar Rao', email: 'bmat2237@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'bmat2240@isibang.ac.in': { name: 'Somendra Singh Kharola', email: 'bmat2240@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2501@isibang.ac.in': { name: 'Aditya Garg', email: 'mmat2501@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2502@isibang.ac.in': { name: 'Akash Babu', email: 'mmat2502@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2503@isibang.ac.in': { name: 'Amit Kumar Basistha', email: 'mmat2503@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2504@isibang.ac.in': { name: 'Anasmit Pal', email: 'mmat2504@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2505@isibang.ac.in': { name: 'Ashwinie Jayendra Parulekar', email: 'mmat2505@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2506@isibang.ac.in': { name: 'Bhavesh Pandya', email: 'mmat2506@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2507@isibang.ac.in': { name: 'Chandrayee Banerjee', email: 'mmat2507@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2508@isibang.ac.in': { name: 'Gandharv Sawant', email: 'mmat2508@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2509@isibang.ac.in': { name: 'Hrishik Koley', email: 'mmat2509@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2510@isibang.ac.in': { name: 'Kabir Chatterjee', email: 'mmat2510@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2511@isibang.ac.in': { name: 'M Madhumitha', email: 'mmat2511@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2512@isibang.ac.in': { name: 'Muhammed Sabith', email: 'mmat2512@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2513@isibang.ac.in': { name: 'Nikhil Nagaria', email: 'mmat2513@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2514@isibang.ac.in': { name: 'Nikhil Pandit', email: 'mmat2514@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2515@isibang.ac.in': { name: 'Pragalbh Kumar Awasthi', email: 'mmat2515@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2516@isibang.ac.in': { name: 'Prateek', email: 'mmat2516@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2517@isibang.ac.in': { name: 'Priyansh Pankaj', email: 'mmat2517@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2518@isibang.ac.in': { name: 'Rahul Sharma', email: 'mmat2518@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2519@isibang.ac.in': { name: 'Rajveer Anand', email: 'mmat2519@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2521@isibang.ac.in': { name: 'Rinkiny Ghatak', email: 'mmat2521@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2522@isibang.ac.in': { name: 'Ritam Dey', email: 'mmat2522@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2523@isibang.ac.in': { name: 'Ruchira Mukherjee', email: 'mmat2523@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2524@isibang.ac.in': { name: 'Samanyu Mahajan', email: 'mmat2524@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2525@isibang.ac.in': { name: 'Sathvik Acharya', email: 'mmat2525@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2526@isibang.ac.in': { name: 'Sayantan Barman', email: 'mmat2526@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2527@isibang.ac.in': { name: 'Shoham Sarkar', email: 'mmat2527@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mmat2528@isibang.ac.in': { name: 'Ved', email: 'mmat2528@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2501@isibang.ac.in': { name: 'Anshika', email: 'mqms2501@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2502@isibang.ac.in': { name: 'Anubhav Upadhyay', email: 'mqms2502@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2503@isibang.ac.in': { name: 'Ayush Mondal', email: 'mqms2503@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2504@isibang.ac.in': { name: 'Biswanath Das', email: 'mqms2504@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2505@isibang.ac.in': { name: 'Gadhavi Digvijay Jayendrakumar', email: 'mqms2505@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2506@isibang.ac.in': { name: 'Dupesh Kumar', email: 'mqms2506@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2507@isibang.ac.in': { name: 'Eshita Basak', email: 'mqms2507@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2508@isibang.ac.in': { name: 'Ishan Banerjee', email: 'mqms2508@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2509@isibang.ac.in': { name: 'Nidhi Kumari', email: 'mqms2509@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2510@isibang.ac.in': { name: 'Nilesh Ranjan Pal', email: 'mqms2510@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2511@isibang.ac.in': { name: 'Nitish', email: 'mqms2511@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2512@isibang.ac.in': { name: 'Pranjay Singh Kanyal', email: 'mqms2512@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2513@isibang.ac.in': { name: 'R Balajee Yadav', email: 'mqms2513@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2514@isibang.ac.in': { name: 'R Hari Krishnan', email: 'mqms2514@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2515@isibang.ac.in': { name: 'Rohit Kumar Dhyawana', email: 'mqms2515@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2516@isibang.ac.in': { name: 'Saptarshi Sadhukhan', email: 'mqms2516@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2517@isibang.ac.in': { name: 'Shaurya Tripathi', email: 'mqms2517@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2518@isibang.ac.in': { name: 'Sneha Pal', email: 'mqms2518@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mqms2519@isibang.ac.in': { name: 'Swarnendu Saha', email: 'mqms2519@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2502@isibang.ac.in': { name: 'Amisha Anil Jadhav', email: 'mlis2502@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2503@isibang.ac.in': { name: 'Anamika Venugopal K', email: 'mlis2503@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2504@isibang.ac.in': { name: 'Anshul Mishra', email: 'mlis2504@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2505@isibang.ac.in': { name: 'Bhukya Vinod Kumar', email: 'mlis2505@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2506@isibang.ac.in': { name: 'Fathima Nasreen', email: 'mlis2506@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2507@isibang.ac.in': { name: 'Greeshma K S', email: 'mlis2507@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2508@isibang.ac.in': { name: 'Madhu M', email: 'mlis2508@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2509@isibang.ac.in': { name: 'Rakendu S', email: 'mlis2509@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2510@isibang.ac.in': { name: 'Rasheedha Sulthana', email: 'mlis2510@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2511@isibang.ac.in': { name: 'Shreya Suresh Makwana', email: 'mlis2511@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2512@isibang.ac.in': { name: 'Vaidehi C Y', email: 'mlis2512@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2401@isibang.ac.in': { name: 'Abhinav Sharma', email: 'mlis2401@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2403@isibang.ac.in': { name: 'Durganshi Singh Depawat', email: 'mlis2403@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2404@isibang.ac.in': { name: 'Ishita Majumder', email: 'mlis2404@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2405@isibang.ac.in': { name: 'Prasenjit Das', email: 'mlis2405@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2406@isibang.ac.in': { name: 'Prateek Kumar Bisen', email: 'mlis2406@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2407@isibang.ac.in': { name: 'Samalla Srihari', email: 'mlis2407@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'mlis2408@isibang.ac.in': { name: 'Shruti Kumari', email: 'mlis2408@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2501@isibang.ac.in': { name: 'Aakash R', email: 'rs_math2501@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2502@isibang.ac.in': { name: 'Emmanuel Khiangte', email: 'rs_math2502@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2402@isibang.ac.in': { name: 'Avik De', email: 'rs_math2402@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2403@isibang.ac.in': { name: 'Balaji Subramoniam', email: 'rs_math2403@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2404@isibang.ac.in': { name: 'Sayan Roy', email: 'rs_math2404@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2405@isibang.ac.in': { name: 'V Adithya', email: 'rs_math2405@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2301@isibang.ac.in': { name: 'Dipankar Dey', email: 'rs_math2301@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2302@isibang.ac.in': { name: 'Krishna Goswami', email: 'rs_math2302@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2304@isibang.ac.in': { name: 'Somnath Jana', email: 'rs_math2304@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2305@isibang.ac.in': { name: 'Bhishek Garg', email: 'rs_math2305@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2201@isibang.ac.in': { name: 'Biswarup Saha', email: 'rs_math2201@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2202@isibang.ac.in': { name: 'Dibyendu Das', email: 'rs_math2202@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2203@isibang.ac.in': { name: 'Gahin Maiti', email: 'rs_math2203@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2204@isibang.ac.in': { name: 'Sayan Pal', email: 'rs_math2204@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2102@isibang.ac.in': { name: 'Jaydeep Bhattacharjee', email: 'rs_math2102@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2103@isibang.ac.in': { name: 'Raushan Toor Nair', email: 'rs_math2103@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2104@isibang.ac.in': { name: 'Shubham Ovhal', email: 'rs_math2104@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2105@isibang.ac.in': { name: 'Sneha B', email: 'rs_math2105@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2002@isibang.ac.in': { name: 'Arghya Chongdar', email: 'rs_math2002@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2003@isibang.ac.in': { name: 'Rahul Mistry', email: 'rs_math2003@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math2004@isibang.ac.in': { name: 'Ritaman Ghosh', email: 'rs_math2004@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math1902@isibang.ac.in': { name: 'Indrajit Ghosh', email: 'rs_math1902@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math1903@isibang.ac.in': { name: 'Kuldeep Guha Mazumder', email: 'rs_math1903@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_math1904@isibang.ac.in': { name: 'Renu Shekhawat', email: 'rs_math1904@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_eau2001@isibang.ac.in': { name: 'Kunal Munjal', email: 'rs_eau2001@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_eau2002@isibang.ac.in': { name: 'Ritam Dutta', email: 'rs_eau2002@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_lis2501@isibang.ac.in': { name: 'Chiddhala Nishanth Kumar', email: 'rs_lis2501@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_lis2301@isibang.ac.in': { name: 'Nabina Khamaru', email: 'rs_lis2301@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_lis2201@isibang.ac.in': { name: 'Vikas Kumar', email: 'rs_lis2201@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_lis2001@isibang.ac.in': { name: 'Debanjali Bain', email: 'rs_lis2001@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_lis2003@isibang.ac.in': { name: 'Sneha Bharti', email: 'rs_lis2003@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_ssiu2401@isibang.ac.in': { name: 'Rahul Pratap Patel', email: 'rs_ssiu2401@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_ssiu2301@isibang.ac.in': { name: 'Chiranjeet Ghosal', email: 'rs_ssiu2301@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_sqc2301@isibang.ac.in': { name: 'Raquibuddin Ahmad Molla', email: 'rs_sqc2301@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_sqc2001@isibang.ac.in': { name: 'Sarat Sindhu Mukhopadhyay', email: 'rs_sqc2001@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+            'rs_asu2401@isibang.ac.in': { name: 'Debanjana Datta', email: 'rs_asu2401@isibang.ac.in', role: 'student', ...createDefaultPlan() },
+        };
+
+        const showView = (viewName) => {
+            Object.values(views).forEach(view => view.classList.remove('active'));
+            if (views[viewName]) views[viewName].classList.add('active');
+        };
+
+        const showModal = (message) => {
+            modalMessage.textContent = message;
+            modal.classList.remove('hidden');
+        };
+
+        const hideModal = () => modal.classList.add('hidden');
+        
+        const isToday = (timestamp) => {
+            if (!timestamp) return false;
+            const today = new Date();
+            const givenDate = timestamp.toDate();
+            return givenDate.getDate() === today.getDate() &&
+                   givenDate.getMonth() === today.getMonth() &&
+                   givenDate.getFullYear() === today.getFullYear();
+        };
+
+        const handleLogin = async () => {
+            const email = document.getElementById('email-input').value.trim().toLowerCase();
+            if (!email.endsWith('@isibang.ac.in')) {
+                showModal("Please use a valid @isibang.ac.in email address.");
+                return;
+            }
+            if (!MOCK_STUDENTS[email]) {
+                showModal("This email is not registered in the system.");
+                return;
+            }
+
+            loadingSpinner.classList.remove('hidden');
+            document.getElementById('login-btn').disabled = true;
+
+            try {
+                if (auth.currentUser) await auth.signOut();
+                await signInAnonymously(auth);
+                userId = email;
+                await setupUser(email);
+                await checkAuthState();
+            } catch (error) {
+                console.error("Login Error:", error);
+                showModal("An error occurred during login.");
+                loadingSpinner.classList.add('hidden');
+                document.getElementById('login-btn').disabled = false;
+            }
+        };
+
+        const handleLogout = async () => {
+            if (userUnsubscribe) userUnsubscribe();
+            if (adminUnsubscribe) adminUnsubscribe();
+            await auth.signOut();
+            currentUser = null; userId = null;
+            showView('login');
+        };
+
+        const checkAuthState = () => {
+            onAuthStateChanged(auth, async (user) => {
+                if (user && userId) {
+                    const userDocRef = doc(db, `artifacts/${appId}/users`, userId);
+                    const userDoc = await getDoc(userDocRef);
+                    if (userDoc.exists()) {
+                        currentUser = userDoc.data();
+                        // Add photo if missing from mock
+                        if (!currentUser.photo) {
+                            currentUser.photo = `https://placehold.co/80x80/e2e8f0/334155?text=${currentUser.name.charAt(0).toUpperCase()}&font=inter`;
+                        }
+                        if (currentUser.role === 'admin') {
+                            showView('adminDashboard');
+                            listenForAdminUpdates();
+                        } else {
+                            showView('studentDashboard');
+                            listenForUserUpdates(userId);
+                        }
+                    } else { showView('login'); }
+                } else { showView('login'); }
+                loadingSpinner.classList.add('hidden');
+                document.getElementById('login-btn').disabled = false;
+            });
+        };
+
+        const setupUser = async (email) => {
+            const userDocRef = doc(db, `artifacts/${appId}/users`, email);
+            const userDoc = await getDoc(userDocRef);
+            if (!userDoc.exists()) {
+                const initialData = MOCK_STUDENTS[email];
+                if (initialData) {
+                    // Add photo if missing
+                     if (!initialData.photo) {
+                        initialData.photo = `https://placehold.co/80x80/e2e8f0/334155?text=${initialData.name.charAt(0).toUpperCase()}&font=inter`;
+                    }
+                    await setDoc(userDocRef, initialData);
+                }
+            }
+        };
+
+        const listenForUserUpdates = (email) => {
+            const userDocRef = doc(db, `artifacts/${appId}/users`, email);
+            if (userUnsubscribe) userUnsubscribe();
+            userUnsubscribe = onSnapshot(userDocRef, (doc) => {
+                if (doc.exists()) {
+                    currentUser = doc.data();
+                    updateStudentDashboard();
+                }
+            });
+        };
+
+        const updateStudentDashboard = () => {
+            if (!currentUser) return;
+            document.getElementById('student-name-header').textContent = currentUser.name.split(' ')[0];
+            document.getElementById('student-name-card').textContent = currentUser.name;
+            document.getElementById('student-photo').src = currentUser.photo;
+            
+            const plan = currentUser.activePlan;
+            document.getElementById('student-plan').textContent = plan.planName;
+            if (plan.validUntil) {
+                const expiryDate = plan.validUntil.toDate().toLocaleDateString('en-GB'); // DD/MM/YYYY
+                document.getElementById('student-plan-expiry').textContent = `Valid until ${expiryDate}`;
+            } else {
+                document.getElementById('student-plan-expiry').textContent = '';
+            }
+
+            document.getElementById('coupon-b').textContent = currentUser.couponBalance.Breakfast;
+            document.getElementById('coupon-l').textContent = currentUser.couponBalance.Lunch;
+            document.getElementById('coupon-d').textContent = currentUser.couponBalance.Dinner;
+
+            document.querySelectorAll('.meal-btn').forEach(btn => {
+                const meal = btn.dataset.meal;
+                const hasCoupon = currentUser.couponBalance[meal] > 0;
+                const hasSub = plan.type === 'Subscription' && 
+                               plan.mealsAllowed[meal] && 
+                               plan.validUntil && plan.validUntil.toDate() > new Date() &&
+                               !isToday(currentUser.lastUsed[meal]);
+                
+                btn.disabled = !hasCoupon && !hasSub;
+            });
+        };
+        
+        const handleUseMeal = async (e) => {
+            const meal = e.currentTarget.dataset.meal;
+            if (!currentUser || !meal) return;
+
+            const hasCoupon = currentUser.couponBalance[meal] > 0;
+            const plan = currentUser.activePlan;
+            const hasSub = plan.type === 'Subscription' && 
+                           plan.mealsAllowed[meal] && 
+                           plan.validUntil && plan.validUntil.toDate() > new Date() &&
+                           !isToday(currentUser.lastUsed[meal]);
+
+            if (!hasCoupon && !hasSub) {
+                showModal("Meal not available.");
+                return;
+            }
+
+            const updates = {};
+            // Prioritize subscription over coupon
+            if (hasSub) {
+                 updates[`lastUsed.${meal}`] = new Date();
+            } else if (hasCoupon) {
+                updates[`couponBalance.${meal}`] = currentUser.couponBalance[meal] - 1;
+            }
+            
+            const userDocRef = doc(db, `artifacts/${appId}/users`, currentUser.email);
+            await updateDoc(userDocRef, updates);
+            showVisualPass(meal);
+        };
+
+        const showVisualPass = (meal) => {
+            const passContainer = document.getElementById('pass-container');
+            const passColors = { Breakfast: 'bg-yellow-400', Lunch: 'bg-green-500', Dinner: 'bg-blue-800' };
+            Object.values(passColors).forEach(color => passContainer.classList.remove(color));
+            
+            passContainer.classList.add(passColors[meal]);
+            document.getElementById('pass-meal-type').textContent = meal.toUpperCase();
+            document.getElementById('pass-photo').src = currentUser.photo;
+            document.getElementById('pass-student-name').textContent = currentUser.name;
+            document.getElementById('pass-date').textContent = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+            showView('visualPass');
+        };
+
+        let allStudents = [];
+        const listenForAdminUpdates = () => {
+            const usersColRef = collection(db, `artifacts/${appId}/users`);
+            const q = query(usersColRef);
+            if(adminUnsubscribe) adminUnsubscribe();
+            adminUnsubscribe = onSnapshot(q, (snapshot) => {
+                allStudents = [];
+                snapshot.forEach(doc => {
+                    if(doc.data().role === 'student') {
+                       allStudents.push({ id: doc.id, ...doc.data() });
+                    }
+                });
+                renderStudentList();
+            });
+        };
+
+        const renderStudentList = () => {
+            const searchTerm = document.getElementById('student-search-input').value.toLowerCase();
+            const container = document.getElementById('student-list-container');
+            container.innerHTML = '';
+
+            const filtered = allStudents.filter(s => s.name.toLowerCase().includes(searchTerm) || s.email.toLowerCase().includes(searchTerm));
+            if (filtered.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500 py-4">No students found.</p>`;
+                return;
+            }
+
+            filtered.forEach(student => {
+                const div = document.createElement('div');
+                div.className = 'p-3 border-b flex justify-between items-center';
+                div.innerHTML = `
+                    <div class="flex items-center space-x-3">
+                        <img src="${student.photo || `https://placehold.co/40x40/e2e8f0/334155?text=${student.name.charAt(0).toUpperCase()}`}" class="w-10 h-10 rounded-full object-cover">
+                        <div>
+                            <p class="font-semibold text-gray-800">${student.name}</p>
+                            <p class="text-sm text-gray-500">${student.activePlan.planName}</p>
+                        </div>
+                    </div>
+                    <button data-id="${student.id}" class="manage-btn bg-blue-500 text-white font-bold px-3 py-1 rounded text-sm">Manage</button>
+                `;
+                container.appendChild(div);
+            });
+            document.querySelectorAll('.manage-btn').forEach(btn => btn.addEventListener('click', openManageModal));
+        };
+
+        const openManageModal = (e) => {
+            const studentId = e.currentTarget.dataset.id;
+            studentToManage = allStudents.find(s => s.id === studentId);
+            if(studentToManage) {
+                document.getElementById('manage-student-name').textContent = studentToManage.name;
+                adminManagePlanModal.classList.remove('hidden');
+            }
+        };
+
+        const closeManageModal = () => {
+            adminManagePlanModal.classList.add('hidden');
+            studentToManage = null;
+        };
+        
+        // ======================================================
+        // NEW: Smart Calendar Logic
+        // ======================================================
+        const calculateExpiryDate = (duration) => {
+            const today = new Date();
+            const currentDay = today.getDate();
+            let expiry = new Date();
+
+            if (duration === 'Full Month') {
+                expiry.setDate(8); // Set to the 8th of the current month
+                if (currentDay >= 9) {
+                    // If we are in the current cycle, expiry is next month
+                    expiry.setMonth(expiry.getMonth() + 1);
+                }
+            } else if (duration === 'Half Month - First') {
+                expiry.setDate(23); // Expiry is the 23rd of the current month
+            } else if (duration === 'Half Month - Second') {
+                expiry.setDate(8); // Expiry is the 8th
+                // If we are in the second half of the month, expiry is next month
+                if (currentDay >= 24) {
+                    expiry.setMonth(expiry.getMonth() + 1);
+                }
+            }
+            // Set time to end of day to avoid timezone issues
+            expiry.setHours(23, 59, 59, 999);
+            return expiry;
+        };
+
+        const savePlanChanges = async () => {
+            if (!studentToManage) return;
+
+            const planType = document.getElementById('plan-type-select').value;
+            const userDocRef = doc(db, `artifacts/${appId}/users`, studentToManage.id);
+            const updates = {};
+
+            if (planType === 'Subscription') {
+                const duration = document.getElementById('plan-duration-select').value;
+                const meals = document.getElementById('plan-meals-select').value;
+                const expiry = calculateExpiryDate(duration);
+                
+                updates['activePlan.type'] = 'Subscription';
+                updates['activePlan.planName'] = `${duration} - ${meals}`;
+                updates['activePlan.validUntil'] = expiry;
+                updates['activePlan.mealsAllowed'] = MEAL_CONFIG[meals];
+
+            } else { // Coupons
+                const mealType = document.getElementById('coupon-meal-type-select').value;
+                const quantity = parseInt(document.getElementById('coupon-quantity-input').value, 10);
+                if (isNaN(quantity) || quantity < 0) {
+                    showModal("Invalid quantity");
+                    return;
+                }
+                const currentBalance = studentToManage.couponBalance[mealType] || 0;
+                updates[`couponBalance.${mealType}`] = currentBalance + quantity;
+            }
+            
+            await updateDoc(userDocRef, updates);
+            showModal("Plan updated successfully!");
+            closeManageModal();
+        };
+
+        document.getElementById('plan-type-select').addEventListener('change', (e) => {
+            const isSub = e.target.value === 'Subscription';
+            document.getElementById('subscription-fields').style.display = isSub ? 'block' : 'none';
+            document.getElementById('coupon-fields').style.display = isSub ? 'none' : 'block';
+        });
+
+        document.getElementById('login-btn').addEventListener('click', handleLogin);
+        document.getElementById('logout-btn-student').addEventListener('click', handleLogout);
+        document.getElementById('logout-btn-admin').addEventListener('click', handleLogout);
+        document.getElementById('modal-close-btn').addEventListener('click', hideModal);
+        document.getElementById('close-pass-btn').addEventListener('click', () => showView('studentDashboard'));
+        document.querySelectorAll('.meal-btn').forEach(btn => btn.addEventListener('click', handleUseMeal));
+        document.getElementById('student-search-input').addEventListener('input', renderStudentList);
+        document.getElementById('manage-plan-cancel-btn').addEventListener('click', closeManageModal);
+        document.getElementById('manage-plan-save-btn').addEventListener('click', savePlanChanges);
+        
+        showView('login');
+        checkAuthState();
+    </script>
+</body>
+</html>
